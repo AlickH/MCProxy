@@ -59,7 +59,7 @@ class ServiceAppDelegate: NSObject, NSApplicationDelegate, NSXPCListenerDelegate
         // 1. Setup Menu Bar Icon
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "server.rack", accessibilityDescription: "MCProxy Service")
+            button.image = NSImage(systemSymbolName: "hammer.fill", accessibilityDescription: "MCProxy Service")
         }
         
         let menu = NSMenu()
