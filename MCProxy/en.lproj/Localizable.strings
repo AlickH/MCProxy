@@ -43,6 +43,7 @@
 "Key" = "Key";
 "Value" = "Value";
 "Type" = "Type";
+"Copy HTTP Link" = "Copy HTTP Link";
 "No Environment Variables" = "No Environment Variables";
 "%lld items" = "%lld items";
 "Streamable HTTP Settings" = "Streamable HTTP Settings";

@@ -43,6 +43,7 @@
 "Key" = "键";
 "Value" = "值";
 "Type" = "类型";
+"Copy HTTP Link" = "复制 HTTP 链接";
 "No Environment Variables" = "无环境变量";
 "%lld items" = "%lld 个项目";
 "Streamable HTTP Settings" = "Streamable HTTP 设置";

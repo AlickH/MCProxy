@@ -51,6 +51,34 @@ struct ContentView: View {
                         .onTapGesture {
                             selectedServerID = server.id
                         }
+                        .contextMenu {
+                            Button {
+                                let host = server.sseHost
+                                let port = serverManager.instances[server.id]?.actualPort ?? server.ssePort
+                                let url = "http://\(host):\(port)/sse"
+                                let pasteboard = NSPasteboard.general
+                                pasteboard.clearContents()
+                                pasteboard.setString(url, forType: .string)
+                            } label: {
+                                Label("Copy HTTP Link", systemImage: "doc.on.doc")
+                            }
+                            
+                            Divider()
+                            
+                            Button {
+                                editingServer = server
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            
+                            Button(role: .destructive) {
+                                if let index = serverManager.servers.firstIndex(where: { $0.id == server.id }) {
+                                    deleteServers(offsets: IndexSet(integer: index))
+                                }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
