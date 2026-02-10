@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon.png" width="128" height="128" alt="MCProxy Icon">
+</p>
+
 # MCProxy
 
 [English](#english) | [简体中文](#简体中文)
@@ -7,6 +11,26 @@
 ## English
 
 MCProxy is a lightweight macOS tool designed to bridge the gap between Stdio-based Model Context Protocol (MCP) servers and applications that prefer HTTP/SSE (Server-Sent Events) communication.
+
+### Gallery
+
+<p align="center">
+  <img src="screenshot-main.png" width="800" alt="Main View">
+  <br>
+  <em>Main Server List View</em>
+</p>
+
+<p align="center">
+  <img src="screenshot-logs.png" width="800" alt="Logs View">
+  <br>
+  <em>Structured JSON Logs with Visualization</em>
+</p>
+
+<p align="center">
+  <img src="screenshot-edit.png" width="800" alt="Edit View">
+  <br>
+  <em>Server Configuration and Environment Settings</em>
+</p>
 
 ### Features
 
@@ -46,6 +70,26 @@ This project is licensed under the **GNU General Public License v3.0**. See the 
 ## 简体中文
 
 MCProxy 是一款轻量级的 macOS 工具，旨在为基于 Stdio 的模型上下文协议 (MCP) 服务器与偏好 HTTP/SSE（服务发送事件）通信的应用之间建立桥梁。
+
+### 功能展示
+
+<p align="center">
+  <img src="screenshot-main.png" width="800" alt="主界面">
+  <br>
+  <em>主界面 - 服务器列表</em>
+</p>
+
+<p align="center">
+  <img src="screenshot-logs.png" width="800" alt="日志视图">
+  <br>
+  <em>结构化 JSON 日志可视化</em>
+</p>
+
+<p align="center">
+  <img src="screenshot-edit.png" width="800" alt="编辑视图">
+  <br>
+  <em>服务器配置与环境变量设置</em>
+</p>
 
 ### 功能特性
 
