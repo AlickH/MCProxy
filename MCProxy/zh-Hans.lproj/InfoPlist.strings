@@ -5,5 +5,4 @@
   Created by Antigravity on 2026-02-10.
 */
 
-"CFBundleDisplayName" = "MCProxy";
-"CFBundleName" = "MCProxy";
+// 清空以允许各 Target 使用各自 Info.plist 中的 CFBundleName/CFBundleDisplayName
