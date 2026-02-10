@@ -55,7 +55,7 @@ struct ContentView: View {
                             Button {
                                 let host = server.sseHost
                                 let port = serverManager.instances[server.id]?.actualPort ?? server.ssePort
-                                let url = "http://\(host):\(port)/sse"
+                                let url = "http://\(host):\(port)/"
                                 let pasteboard = NSPasteboard.general
                                 pasteboard.clearContents()
                                 pasteboard.setString(url, forType: .string)
