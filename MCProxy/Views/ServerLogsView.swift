@@ -116,15 +116,14 @@ struct LogEntryView: View {
     }()
     
     private var displayContent: AttributedString {
-        guard let attr = entry.highlightedMessage else { return AttributedString(entry.message) }
-        
+        let text = entry.message
         if parsedInfo.isTraffic {
             // Drop the first line (prefix)
-            if let range = attr.range(of: "\n") {
-                return AttributedString(attr[range.upperBound...])
+            if let range = text.range(of: "\n") {
+                return AttributedString(String(text[range.upperBound...]))
             }
         }
-        return attr
+        return AttributedString(text)
     }
 
     private var isNotification: Bool {
@@ -464,14 +463,14 @@ struct FallbackContentView: View {
     
     var body: some View {
         let prefix = isRequest ? ">>> CLIENT REQUEST:\n" : "<<< SERVER RESPONSE:\n"
-        let content: AttributedString
+        let text = entry.message
+        let content: String
         
-        if let attr = entry.highlightedMessage,
-           let range = attr.range(of: "\n"),
-           entry.message.hasPrefix(prefix) {
-            content = AttributedString(attr[range.upperBound...])
+        if let range = text.range(of: "\n"),
+           text.hasPrefix(prefix) {
+            content = String(text[range.upperBound...])
         } else {
-            content = AttributedString(entry.message)
+            content = text
         }
         
         return Text(content)

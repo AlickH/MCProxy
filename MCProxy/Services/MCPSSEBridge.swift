@@ -2,7 +2,7 @@ import Foundation
 import Network
 import Combine
 
-enum ResponseFormat {
+enum ResponseFormat: Sendable {
     case sse
     case raw
 }
@@ -230,7 +230,7 @@ class MCPSSEBridge: ObservableObject {
             guard let conn = self.connections[id] else { continue }
             let addr = conn.endpoint.debugDescription
             let format = self.clientFormats[id] ?? .raw
-            let isPost = self.postConnections.contains(id)
+            let _ = self.postConnections.contains(id)
             
             // Use the mapped Session ID if available, otherwise fallback to connection ID
             let sKey = self.connectionIdToSessionId[id] ?? id.uuidString.lowercased()
@@ -477,7 +477,8 @@ class MCPSSEBridge: ObservableObject {
         
         connection.send(content: headers.data(using: .utf8), completion: .contentProcessed({ _ in 
             // If SSE, send endpoint event
-            if format == .sse {
+            switch format {
+            case .sse:
                 let endpointEvent = "event: endpoint\ndata: http://\(self.currentHost):\(self.currentPort)/message?sessionId=\(sessionId)\n\n"
                 // Manual chunk
                 let eventData = endpointEvent.data(using: .utf8)!
@@ -490,7 +491,7 @@ class MCPSSEBridge: ObservableObject {
                 connection.send(content: chunk, completion: .contentProcessed({ _ in
                     self.queue.asyncAfter(deadline: .now() + 0.1) { completion() }
                 }))
-            } else {
+            case .raw:
                 self.queue.asyncAfter(deadline: .now() + 0.1) { completion() }
             }
         }))
@@ -606,7 +607,7 @@ class MCPSSEBridge: ObservableObject {
                 if let id = requestId, let sid = sessionIdQuery {
                     idToSessionId[id] = sid
                 }
-                let idDesc = requestId.map { String(describing: $0) } ?? "notify"
+                let _ = requestId.map { String(describing: $0) } ?? "notify"
                 // print("[MCPSSEBridge] [\(connectionId)] POST Session Message (id: \(idDesc))")
                 
                 let response = "HTTP/1.1 202 Accepted\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 21\r\nConnection: close\r\n\r\n{\"status\":\"accepted\"}"
@@ -661,7 +662,7 @@ class MCPSSEBridge: ObservableObject {
             self.connections.removeValue(forKey: id)
             self.sseClients.removeValue(forKey: id)
             
-            let isPost = self.postConnections.contains(id)
+            let _ = self.postConnections.contains(id)
             self.postConnections.remove(id)
             self.clientFormats.removeValue(forKey: id)
             self.clientNames.removeValue(forKey: id)

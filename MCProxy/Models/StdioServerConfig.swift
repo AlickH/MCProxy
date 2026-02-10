@@ -66,7 +66,7 @@ class ServerInstance: ObservableObject, Identifiable {
     var clientCancellable: AnyCancellable?
     
     private let logQueue = DispatchQueue(label: "com.mcproxy.log-processing", qos: .userInitiated)
-    private var pendingPairs: [AnyHashable: LogPair] = [:]
+    private var pendingPairs: [String: LogPair] = [:]
     
     init(config: StdioServerConfig) {
         self.config = config
@@ -75,11 +75,11 @@ class ServerInstance: ObservableObject, Identifiable {
     var maxLogCount: Int = 1000
     
     func appendLog(_ message: String, type: LogType, clientName: String? = nil, rpcId: AnyHashable? = nil, rawData: Data? = nil) {
+        let rpcIdString = rpcId.map { "\($0)" }
+        
         logQueue.async { [weak self] in
             guard let self = self else { return }
             let displayMessage = self.formatLogMessage(message)
-            // Pre-calculate highlighting
-            let highlighted = self.highlightLog(displayMessage, type: type)
             
             // Try to parse JSON for structured view
             var jsonPayload: JSONPayload? = nil
@@ -99,90 +99,49 @@ class ServerInstance: ObservableObject, Identifiable {
                 }
             }
             
-            let entry = LogEntry(timestamp: Date(), message: displayMessage, type: type, clientName: clientName, highlightedMessage: highlighted, rpcId: rpcId, jsonPayload: jsonPayload)
+            let finalJson = jsonPayload
             
-            DispatchQueue.main.async {
+            Task { @MainActor in
+                let entry = LogEntry(
+                    timestamp: Date(),
+                    message: displayMessage, // Use displayMessage for basic viewing
+                    type: type,
+                    clientName: clientName,
+                    rpcId: rpcIdString,
+                    jsonPayload: finalJson
+                )
+                
                 // Add to raw logs
                 self.logs.append(entry)
                 if self.logs.count > self.maxLogCount {
                     self.logs.removeFirst(self.logs.count - self.maxLogCount)
                 }
                 
-                // Process LogItem pairing
-                if type == .system, let id = rpcId, message.contains("CLIENT REQUEST") {
+                // Process LogItem pairing/single display
+                if type == .system, let id = rpcIdString, message.contains("CLIENT REQUEST") {
                     // Start new pair
                     let pair = LogPair(request: entry)
                     self.pendingPairs[id] = pair
                     self.logItems.append(.pair(pair))
-                } else if type == .stdout, let id = rpcId, message.contains("SERVER RESPONSE") {
+                } else if type == .stdout, let id = rpcIdString, message.contains("SERVER RESPONSE") {
                     // Match existing pair
                     if let pair = self.pendingPairs[id] {
                         pair.response = entry
                         self.pendingPairs.removeValue(forKey: id)
                     } else {
-                        // Orphan response
+                        // Orphan response or simple stdout
                         self.logItems.append(.single(entry))
                     }
                 } else {
-                    // Other logs
+                    // System message, stderr, or simple stdout without paired RPC ID
                     self.logItems.append(.single(entry))
                 }
                 
-                // Trim logItems
                 if self.logItems.count > self.maxLogCount {
-                    // If we remove a pair that is pending, we should cleanup pendingPairs?
-                    // It's tricky to map back. For simplicity, just trim array. 
-                    // Pending map might leak if requests are never responded to and drift out of window.
-                    // But maxLogCount is large enough.
                     self.logItems.removeFirst(self.logItems.count - self.maxLogCount)
                 }
             }
         }
-    }
-    
-    private func highlightLog(_ text: String, type: LogType) -> AttributedString {
-        var attributed = AttributedString(text)
-        attributed.foregroundColor = colorForType(type)
-        attributed.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        
-        // 1. Highlight Brackets and Braces (Gray)
-        if let punctuation = try? NSRegularExpression(pattern: "[\\{\\}\\[\\]]", options: []) {
-            punctuation.enumerateMatches(in: text, options: [], range: NSRange(text.startIndex..<text.endIndex, in: text)) { match, _, _ in
-                if let matchRange = match?.range, let attRange = Range(matchRange, in: attributed) {
-                    attributed[attRange].foregroundColor = .secondary.opacity(0.6)
-                }
-            }
-        }
-        
-        // 2. Highlight Keys (Purple)
-        if let keyRegex = try? NSRegularExpression(pattern: "\"([^\"]+)\"\\s*:", options: []) {
-            keyRegex.enumerateMatches(in: text, options: [], range: NSRange(text.startIndex..<text.endIndex, in: text)) { match, _, _ in
-                if let matchRange = match?.range, let attRange = Range(matchRange, in: attributed) {
-                    attributed[attRange].foregroundColor = .purple
-                    attributed[attRange].font = .monospacedSystemFont(ofSize: 12, weight: .bold)
-                }
-            }
-        }
-        
-        // 3. Highlight Values: Strings (Green)
-        if let stringValueRegex = try? NSRegularExpression(pattern: ":\\s*\"([^\"]*)\"", options: []) {
-            stringValueRegex.enumerateMatches(in: text, options: [], range: NSRange(text.startIndex..<text.endIndex, in: text)) { match, _, _ in
-                if let matchRange = match?.range(at: 1), let attRange = Range(matchRange, in: attributed) {
-                    attributed[attRange].foregroundColor = .green
-                }
-            }
-        }
-        
-        // 4. Highlight Values: Numbers, Bools, Null (Orange)
-        if let literalValueRegex = try? NSRegularExpression(pattern: ":\\s*(-?\\d+\\.?\\d*|true|false|null)", options: []) {
-            literalValueRegex.enumerateMatches(in: text, options: [], range: NSRange(text.startIndex..<text.endIndex, in: text)) { match, _, _ in
-                if let matchRange = match?.range(at: 1), let attRange = Range(matchRange, in: attributed) {
-                    attributed[attRange].foregroundColor = .orange
-                }
-            }
-        }
-        
-        return attributed
     }
     
     private func colorForType(_ type: LogType) -> Color {
@@ -195,7 +154,7 @@ class ServerInstance: ObservableObject, Identifiable {
     
     private func formatLogMessage(_ message: String) -> String {
         // 1. Initial cleanup of the raw string
-        var processed = message
+        let processed = message
             .replacingOccurrences(of: "\\n", with: "\n")
             .replacingOccurrences(of: "\\t", with: "\t")
             .replacingOccurrences(of: "\\\"", with: "\"")
@@ -313,8 +272,7 @@ struct LogEntry: Identifiable, Equatable {
     let message: String
     let type: LogType
     var clientName: String? = nil
-    var highlightedMessage: AttributedString? = nil
-    var rpcId: AnyHashable? = nil
+    var rpcId: String? = nil
     var jsonPayload: JSONPayload? = nil
     
     static func == (lhs: LogEntry, rhs: LogEntry) -> Bool {

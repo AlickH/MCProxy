@@ -6,70 +6,72 @@ import Foundation
 // MARK: - UI Entry Point (Main Process)
 
 autoreleasepool {
-    print("[MCProxy] Starting UI Process...")
-    
-    // 1. Ensure background helper service is running
-    ServiceLauncher.ensureServiceIsRunning()
-    
-    // 2. Run as Regular App (Dock + Window)
-    let app = NSApplication.shared
-    let delegate = UIAppDelegate()
-    app.delegate = delegate
-    app.setActivationPolicy(.regular)
-    
-    // 3. Setup Menu Bar
-    let mainMenu = NSMenu()
-    
-    // App Menu
-    let appMenuItem = NSMenuItem()
-    mainMenu.addItem(appMenuItem)
-    let appMenu = NSMenu()
-    appMenuItem.submenu = appMenu
-    appMenu.addItem(withTitle: "About MCProxy", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
-    appMenu.addItem(NSMenuItem.separator())
-    appMenu.addItem(withTitle: "Preferences...", action: nil, keyEquivalent: ",")
-    appMenu.addItem(NSMenuItem.separator())
-    appMenu.addItem(withTitle: "Hide MCProxy", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-    let hideOthers = NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
-    hideOthers.keyEquivalentModifierMask = [.command, .option]
-    appMenu.addItem(hideOthers)
-    appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
-    appMenu.addItem(NSMenuItem.separator())
-    appMenu.addItem(withTitle: "Quit MCProxy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-    
-    // Edit Menu (Critical for Copy/Paste)
-    let editMenuItem = NSMenuItem()
-    mainMenu.addItem(editMenuItem)
-    let editMenu = NSMenu(title: "Edit")
-    editMenuItem.submenu = editMenu
-    editMenu.addItem(withTitle: "Undo", action: Selector("undo:"), keyEquivalent: "z")
-    editMenu.addItem(withTitle: "Redo", action: Selector("redo:"), keyEquivalent: "Z")
-    editMenu.addItem(NSMenuItem.separator())
-    editMenu.addItem(withTitle: "Cut", action: Selector("cut:"), keyEquivalent: "x")
-    editMenu.addItem(withTitle: "Copy", action: Selector("copy:"), keyEquivalent: "c")
-    editMenu.addItem(withTitle: "Paste", action: Selector("paste:"), keyEquivalent: "v")
-    editMenu.addItem(withTitle: "Select All", action: Selector("selectAll:"), keyEquivalent: "a")
-    
-    // Window Menu
-    let windowMenuItem = NSMenuItem()
-    mainMenu.addItem(windowMenuItem)
-    let windowMenu = NSMenu(title: "Window")
-    windowMenuItem.submenu = windowMenu
-    windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
-    windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.zoom(_:)), keyEquivalent: "")
-    windowMenu.addItem(NSMenuItem.separator())
-    windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
-    
-    // Help Menu
-    let helpMenuItem = NSMenuItem()
-    mainMenu.addItem(helpMenuItem)
-    let helpMenu = NSMenu(title: "Help")
-    helpMenuItem.submenu = helpMenu
-    helpMenu.addItem(withTitle: "MCProxy Help", action: nil, keyEquivalent: "?")
+    MainActor.assumeIsolated {
+        print("[MCProxy] Starting UI Process...")
+        
+        // 1. Ensure background helper service is running
+        ServiceLauncher.ensureServiceIsRunning()
+        
+        // 2. Run as Regular App (Dock + Window)
+        let app = NSApplication.shared
+        let delegate = UIAppDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.regular)
+        
+        // 3. Setup Menu Bar
+        let mainMenu = NSMenu()
+        
+        // App Menu
+        let appMenuItem = NSMenuItem()
+        mainMenu.addItem(appMenuItem)
+        let appMenu = NSMenu()
+        appMenuItem.submenu = appMenu
+        appMenu.addItem(withTitle: "About MCProxy", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "Preferences...", action: nil, keyEquivalent: ",")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "Hide MCProxy", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hideOthers = NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        hideOthers.keyEquivalentModifierMask = [.command, .option]
+        appMenu.addItem(hideOthers)
+        appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "Quit MCProxy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        
+        // Edit Menu (Critical for Copy/Paste)
+        let editMenuItem = NSMenuItem()
+        mainMenu.addItem(editMenuItem)
+        let editMenu = NSMenu(title: "Edit")
+        editMenuItem.submenu = editMenu
+        editMenu.addItem(withTitle: "Undo", action: #selector(UndoManager.undo), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "Redo", action: #selector(UndoManager.redo), keyEquivalent: "Z")
+        editMenu.addItem(NSMenuItem.separator())
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        
+        // Window Menu
+        let windowMenuItem = NSMenuItem()
+        mainMenu.addItem(windowMenuItem)
+        let windowMenu = NSMenu(title: "Window")
+        windowMenuItem.submenu = windowMenu
+        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.zoom(_:)), keyEquivalent: "")
+        windowMenu.addItem(NSMenuItem.separator())
+        windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+        
+        // Help Menu
+        let helpMenuItem = NSMenuItem()
+        mainMenu.addItem(helpMenuItem)
+        let helpMenu = NSMenu(title: "Help")
+        helpMenuItem.submenu = helpMenu
+        helpMenu.addItem(withTitle: "MCProxy Help", action: nil, keyEquivalent: "?")
 
-    app.mainMenu = mainMenu
-    
-    app.run()
+        app.mainMenu = mainMenu
+        
+        app.run()
+    }
 }
 
 // MARK: - Delegates

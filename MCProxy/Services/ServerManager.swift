@@ -220,15 +220,15 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
     func logAppended(serverId: String, message: String, type: String, clientName: String?, rpcIdData: Data?) {
         guard let uuid = UUID(uuidString: serverId) else { return }
         
-        var rpcId: AnyHashable? = nil
+        var rpcId: String? = nil
         if let data = rpcIdData {
             // Try to decode common ID types
             if let str = try? JSONDecoder().decode(String.self, from: data) {
                 rpcId = str
             } else if let int = try? JSONDecoder().decode(Int.self, from: data) {
-                rpcId = int
+                rpcId = "\(int)"
             } else if let double = try? JSONDecoder().decode(Double.self, from: data) {
-                rpcId = double
+                rpcId = "\(double)"
             }
         }
         
@@ -418,7 +418,7 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
         let notifyLog: (String, LogType, String?, AnyHashable?) -> Void = { msg, type, clientName, rpcId in
             instance.appendLog(msg, type: type, clientName: clientName, rpcId: rpcId)
             // Hook for XPC push
-             ServerManager.onLogAppended?(instance.id, LogEntry(timestamp: Date(), message: msg, type: type, clientName: clientName, rpcId: rpcId))
+             ServerManager.onLogAppended?(instance.id, LogEntry(timestamp: Date(), message: msg, type: type, clientName: clientName, rpcId: rpcId.map { "\($0)" }))
         }
         
         notifyLog("Initializing server: \(config.name)", .system, nil, nil)
@@ -682,13 +682,20 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
         let stderrPipe = components.stderr
         
         return try await withCheckedThrowingContinuation { continuation in
-            var outputBuffer = Data()
-            var toolsDiscovered: [MCPTool]?
-            var hasFinished = false
+            class DiscoveryState: @unchecked Sendable {
+                var outputBuffer = Data()
+                var toolsDiscovered: [MCPTool]?
+                var hasFinished = false
+                let lock = NSRecursiveLock()
+            }
+            
+            let state = DiscoveryState()
             
             let cleanup = {
-                if !hasFinished {
-                    hasFinished = true
+                state.lock.lock()
+                defer { state.lock.unlock() }
+                if !state.hasFinished {
+                    state.hasFinished = true
                     process.terminate()
                     stdoutPipe.fileHandleForReading.readabilityHandler = nil
                     stderrPipe.fileHandleForReading.readabilityHandler = nil
@@ -698,19 +705,30 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
             stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                outputBuffer.append(data)
                 
-                while let str = String(data: outputBuffer, encoding: .utf8), let newlineIndex = str.firstIndex(of: "\n") {
-                    let line = String(str[..<newlineIndex]).trimmingCharacters(in: .whitespaces)
-                    if let range = str.range(of: "\n") {
-                        outputBuffer.removeFirst(str.distance(from: str.startIndex, to: range.upperBound))
-                    }
+                state.lock.lock()
+                state.outputBuffer.append(data)
+                let currentBuffer = state.outputBuffer
+                state.lock.unlock()
+                
+                guard let str = String(data: currentBuffer, encoding: .utf8) else { return }
+                
+                var remainingStr = str
+                var bytesProcessed = 0
+                
+                while let newlineIndex = remainingStr.firstIndex(of: "\n") {
+                    let line = String(remainingStr[..<newlineIndex]).trimmingCharacters(in: .whitespaces)
+                    let lineWithNewline = remainingStr[...newlineIndex]
+                    let lineByteCount = lineWithNewline.data(using: .utf8)?.count ?? 0
+                    
+                    bytesProcessed += lineByteCount
+                    remainingStr = String(remainingStr[remainingStr.index(after: newlineIndex)...])
                     
                     guard let lineData = line.data(using: .utf8),
                           let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else { continue }
                     
                     // 1. Check for Initialized
-                    if let result = json["result"] as? [String: Any],
+                    if json["result"] as? [String: Any] != nil,
                        json["id"] as? Int == 1 {
                         // Send tools/list
                         let listTools: [String: Any] = [
@@ -730,7 +748,7 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
                     if let result = json["result"] as? [String: Any],
                        let tools = result["tools"] as? [[String: Any]],
                        json["id"] as? Int == 2 {
-                        toolsDiscovered = tools.enumerated().compactMap { (index, t) in
+                        let discovered = tools.enumerated().compactMap { (index, t) -> MCPTool? in
                             guard let name = t["name"] as? String else { return nil }
                             let desc = t["description"] as? String ?? ""
                             
@@ -749,15 +767,29 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
                             
                             return MCPTool(id: "\(config.id.uuidString)-\(name)-\(index)", name: name, description: desc, inputSchema: schemaMap)
                         }
+                        
+                        state.lock.lock()
+                        state.toolsDiscovered = discovered
+                        state.lock.unlock()
+                        
                         cleanup()
-                        continuation.resume(returning: toolsDiscovered ?? [])
+                        continuation.resume(returning: discovered)
+                        break
                     }
+                }
+                
+                if bytesProcessed > 0 {
+                    state.lock.lock()
+                    if state.outputBuffer.count >= bytesProcessed {
+                        state.outputBuffer.removeFirst(bytesProcessed)
+                    }
+                    state.lock.unlock()
                 }
             }
             
             stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if let str = String(data: data, encoding: .utf8) {
+                if String(data: data, encoding: .utf8) != nil {
                     // print("[Validation Stderr] \(str)") // Silencing noisy validation logs
                 }
             }
@@ -783,7 +815,11 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
                 
                 // Timeout
                 DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                    if !hasFinished {
+                    state.lock.lock()
+                    let alreadyFinished = state.hasFinished
+                    state.lock.unlock()
+                    
+                    if !alreadyFinished {
                         cleanup()
                         continuation.resume(throwing: NSError(domain: "ServerManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Validation timed out after 5s"]))
                     }
@@ -864,6 +900,24 @@ struct ProcessComponents {
     let stderr: Pipe
 }
 
+class ToolInstaller {
+    static let suggestions: [String: String] = [
+        "uv": "brew install uv (Recommended) or 'curl -LsSf https://astral.sh/uv/install.sh | sh'",
+        "npx": "Install Node.js from https://nodejs.org or 'brew install node'",
+        "node": "Install Node.js from https://nodejs.org or 'brew install node'",
+        "python3": "Install via 'brew install python' or from https://python.org",
+        "docker": "Install Docker Desktop from https://www.docker.com/products/docker-desktop/",
+        "go": "Install via 'brew install go' or from https://go.dev",
+        "rustc": "Install via 'rustup' from https://rustup.rs"
+    ]
+    
+    static func getSuggestion(for command: String) -> String? {
+        // Handle cases like 'npx @modelcontextprotocol/server-everything' -> 'npx'
+        let baseCommand = command.split(separator: "/").last?.split(separator: " ").first.map(String.init) ?? command
+        return suggestions[baseCommand.lowercased()]
+    }
+}
+
 class ProcessRunner {
     static func resolveCommandPath(_ command: String) -> URL? {
         if command.hasPrefix("/") || command.hasPrefix(".") {
@@ -875,12 +929,18 @@ class ProcessRunner {
             let fullPath = (path as NSString).appendingPathComponent(command)
             if FileManager.default.isExecutableFile(atPath: fullPath) { return URL(fileURLWithPath: fullPath) }
         }
-        return URL(fileURLWithPath: "/usr/bin/env")
+        // MOD: Removed fallback to /usr/bin/env to allow explicit "Command not found" detection
+        return nil
     }
     
     static func createProcess(config: StdioServerConfig) throws -> ProcessComponents {
         guard let executableURL = resolveCommandPath(config.command) else {
-            throw NSError(domain: "ProcessRunner", code: 1, userInfo: [NSLocalizedDescriptionKey: "Command not found: \(config.command)"])
+            let suggestion = ToolInstaller.getSuggestion(for: config.command)
+            var userInfo: [String: Any] = [NSLocalizedDescriptionKey: "Command not found: \(config.command)"]
+            if let suggestion = suggestion {
+                userInfo["MCProxy.suggestion"] = suggestion
+            }
+            throw NSError(domain: "ProcessRunner", code: 1, userInfo: userInfo)
         }
         
         let process = Process()

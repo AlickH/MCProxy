@@ -87,13 +87,7 @@ class ServiceAppDelegate: NSObject, NSApplicationDelegate, NSXPCListenerDelegate
             
             var rpcIdData: Data? = nil
             if let id = log.rpcId {
-                if let str = id as? String {
-                    rpcIdData = try? JSONEncoder().encode(str)
-                } else if let int = id as? Int {
-                    rpcIdData = try? JSONEncoder().encode(int)
-                } else if let double = id as? Double {
-                    rpcIdData = try? JSONEncoder().encode(double)
-                }
+                rpcIdData = try? JSONEncoder().encode(id)
             }
             
             for connection in self.connectedClients {
@@ -175,9 +169,41 @@ class ServiceAppDelegate: NSObject, NSApplicationDelegate, NSXPCListenerDelegate
     }
     
     @objc func openUI() {
-        // Launch the main App (assuming it's in the same bundle parent)
-        if let appUrl = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent() as URL? {
-             NSWorkspace.shared.open(appUrl)
+        // Find the main app bundle
+        var appUrl: URL?
+        
+        // Try different paths to find the main app
+        let bundleUrl = Bundle.main.bundleURL
+        
+        // Method 1: Try to find by going up from helper location
+        // Helper could be in: App.app/Contents/MacOS/ or App.app/Contents/Library/LaunchAgents/
+        var parentUrl = bundleUrl
+        for _ in 0..<5 { // Go up max 5 levels
+            parentUrl = parentUrl.deletingLastPathComponent()
+            if parentUrl.pathExtension == "app" {
+                appUrl = parentUrl
+                break
+            }
+        }
+        
+        // Method 2: If not found, try using bundle identifier
+        if appUrl == nil {
+            if let mainAppUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.alick.MCProxy") {
+                appUrl = mainAppUrl
+            }
+        }
+        
+        if let url = appUrl {
+            helperLog("[MCProxyHelper] Opening main app at: \(url.path)")
+            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) { (runningApp, error) in
+                if let error = error {
+                    helperLog("[MCProxyHelper] Failed to open main app: \(error)")
+                } else {
+                    helperLog("[MCProxyHelper] Main app opened successfully")
+                }
+            }
+        } else {
+            helperLog("[MCProxyHelper] Could not find main app bundle")
         }
     }
     
@@ -254,8 +280,6 @@ class MCProxyServiceDelegate: NSObject, MCProxyServiceProtocol {
     func requestStatusSync() {
         helperLog("[MCProxyHelper] Requesting status sync for all servers.")
         for (id, instance) in self.serverManager.instances {
-            let serverIdStr = id.uuidString
-            let statusStr = instance.status.rawValue
             let port = instance.actualPort
             
             // Push current status to all clients

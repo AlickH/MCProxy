@@ -1,0 +1,93 @@
+/* 
+  Localizable.strings
+  MCProxy
+
+  Created by Antigravity on 2026-02-10.
+*/
+
+"MCProxy" = "MCProxy";
+"Add Server" = "添加服务器";
+"Quit" = "退出";
+"Add New Server" = "添加新服务器";
+"Quit Application and Stop All Services" = "退出应用并停止所有服务";
+"No Servers" = "无服务器";
+"Add your first server to get started" = "添加您的第一个服务器以开始";
+"Select a Server" = "请选择服务器";
+"Choose a server from the list to view details" = "从列表中选择一个服务器以查看详情";
+"ENABLED" = "已启用";
+"DISABLED" = "已禁用";
+"STOPPED" = "已停止";
+"STARTING" = "正在启动";
+"RUNNING" = "运行中";
+"ERROR" = "错误";
+"Dictionary" = "词典";
+"Array" = "数组";
+"String" = "字符串";
+"Number" = "数字";
+"Boolean" = "布尔值";
+"Null" = "空";
+"Unknown" = "未知";
+
+/* Server Edit View */
+"Basic Info" = "基本信息";
+"Name" = "名称";
+"Server name" = "服务器名称";
+"Command" = "命令";
+"e.g. uvx, npx" = "例如：uvx, npx";
+"Arguments" = "参数";
+"space separated" = "以空格分隔";
+"Environment & Directory" = "环境与目录";
+"Working Dir" = "工作目录";
+"Optional" = "可选";
+"Environment Variables" = "环境变量";
+"Key" = "键";
+"Value" = "值";
+"No Environment Variables" = "无环境变量";
+"%lld items" = "%lld 个项目";
+"Streamable HTTP Settings" = "Streamable HTTP 设置";
+"Host" = "主机";
+"Port" = "端口";
+"0 for random" = "0 表示随机端口";
+"⚠️ Ports < 1024 are restricted on macOS" = "⚠️ 在 macOS 上，低于 1024 的端口受限";
+"Validation" = "验证";
+"Validating..." = "正在验证...";
+"Validate Connection" = "验证连接";
+"Stop" = "停止";
+"Validation failed: %@" = "验证失败：%@";
+"Validation stopped" = "验证停止";
+"Port %lld is a system-restricted port on macOS (0-1023). Please use a port above 1024 or use 0 for an automatic port." = "端口 %lld 在 macOS 上受限 (0-1023)。请使用 1024 以上的端口，或使用 0 以自动分配。";
+"Port %lld is already in use by another application. Please choose a different port." = "端口 %lld 已被其他应用程序占用。请选择不同的端口。";
+"Clipboard is empty" = "剪贴板为空";
+"Invalid text encoding" = "错误的内容编码";
+"JSON format not recognized. Expected: { \"mcpServers\": { \"name\": { \"command\": \"...\", \"args\": [...] } } }" = "无法识别 JSON 格式。预期格式: { \"mcpServers\": { \"name\": { \"command\": \"...\", \"args\": [...] } } }";
+"Failed to parse JSON: %@" = "解析 JSON 失败：%@";
+"%lld parameter(s)" = "%lld 个参数";
+"%lld Tools" = "%lld 个工具";
+"Suggestion:" = "建议：";
+"Copy Install Command" = "复制安装命令";
+"Cancel" = "取消";
+"Parse MCP JSON" = "解析 MCP JSON";
+"Save" = "保存";
+
+/* Alerts */
+"Restricted Port" = "端口受限";
+"Invalid JSON" = "无效的 JSON";
+"OK" = "好";
+
+/* Server Logs View */
+"Active Clients:" = "活跃客户端：";
+"Logs: %@" = "日志：%@";
+"Clear Logs" = "清空日志";
+"Waiting for response..." = "正在等待响应...";
+"Available Tools (%lld)" = "可用工具 (%lld)";
+"Input Schema" = "输入架构";
+"Enable" = "启用";
+"Initialized (JSON-RPC 2.0)" = "已初始化 (JSON-RPC 2.0)";
+"NOTIFICATION" = "通知";
+"REQUEST" = "请求";
+"RESPONSE" = "响应";
+"OUT" = "标准输出";
+"ERR" = "标准错误";
+"SYS" = "系统";
+"Local Connection" = "本地连接";
+"Method:" = "方法：";

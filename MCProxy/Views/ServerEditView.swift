@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 struct ServerEditView: View {
     @Environment(\.dismiss) var dismiss
@@ -29,6 +30,9 @@ struct ServerEditView: View {
     @State private var mcpTools: [MCPTool] = []
     @State private var showingToolsPopover = false
     @State private var validationProcess: Process?
+    @State private var installSuggestion: String?
+    @State private var showingPasteError = false
+    @State private var pasteErrorMessage = ""
     
     // Port warning states
     @State private var showingPortAlert = false
@@ -42,10 +46,15 @@ struct ServerEditView: View {
             validationSection
         }
         .formStyle(.grouped)
-        .alert("Restricted Port", isPresented: $showingPortAlert) {
-            Button("OK", role: .cancel) { }
+        .alert(String(localized: "Restricted Port"), isPresented: $showingPortAlert) {
+            Button(LocalizedStringKey("OK"), role: .cancel) { }
         } message: {
             Text(portWarningMessage)
+        }
+        .alert(String(localized: "Invalid JSON"), isPresented: $showingPasteError) {
+            Button(LocalizedStringKey("OK"), role: .cancel) { }
+        } message: {
+            Text(pasteErrorMessage)
         }
         .toolbar {
             toolbarContent
@@ -195,7 +204,7 @@ struct ServerEditView: View {
                                 }
                             } else if !envVars.isEmpty {
                                 withAnimation {
-                                    envVars.removeLast()
+                                    _ = envVars.removeLast()
                                 }
                             }
                         }) {
@@ -293,7 +302,7 @@ struct ServerEditView: View {
                 
                 // Stop Button (only show when validating)
                 if isValidating {
-                    Button("Stop") {
+                    Button(LocalizedStringKey("Stop")) {
                         stopValidation()
                     }
                     .buttonStyle(.bordered)
@@ -325,12 +334,51 @@ struct ServerEditView: View {
             
             // Validation Error Message
             if let error = validationError {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(.red)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    
+                    if let suggestion = installSuggestion {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "lightbulb.fill")
+                                    .foregroundColor(.orange)
+                                Text("Suggestion:")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            Text(suggestion)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .padding(8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.orange.opacity(0.1))
+                                .cornerRadius(4)
+                            
+                            if !suggestion.contains("http") {
+                                Button {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(suggestion, forType: .string)
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "doc.on.doc")
+                                        Text("Copy Install Command")
+                                    }
+                                    .font(.caption2)
+                                }
+                                .buttonStyle(.link)
+                                .padding(.leading, 2)
+                            }
+                        }
+                        .padding(.top, 4)
+                        .padding(.leading, 22)
+                    }
                 }
                 .padding(.top, 8)
             }
@@ -452,13 +500,20 @@ struct ServerEditView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") {
+            Button(LocalizedStringKey("Cancel")) {
                 dismiss()
             }
         }
         
+        ToolbarItem(placement: .automatic) {
+            Button(action: pasteFromClipboard) {
+                Label("Parse MCP JSON", systemImage: "doc.on.clipboard")
+            }
+            .help("Parse MCP JSON from clipboard")
+        }
+        
         ToolbarItem(placement: .confirmationAction) {
-            Button("Save") {
+            Button(LocalizedStringKey("Save")) {
                 save()
             }
             .buttonStyle(.borderedProminent)
@@ -488,6 +543,7 @@ struct ServerEditView: View {
             isValidating = true
             validationSuccess = false
             validationError = nil
+            installSuggestion = nil
             mcpTools = []
         }
         
@@ -538,7 +594,9 @@ struct ServerEditView: View {
                 await MainActor.run {
                     withAnimation {
                         self.isValidating = false
-                        self.validationError = "Validation failed: \(error.localizedDescription)"
+                        let nsError = error as NSError
+                        self.validationError = String(localized: "Validation failed: \(error.localizedDescription)")
+                        self.installSuggestion = nsError.userInfo["MCProxy.suggestion"] as? String
                     }
                 }
             }
@@ -550,7 +608,7 @@ struct ServerEditView: View {
         // they are automatically cleaned up via defer in validateConfig
         withAnimation {
             isValidating = false
-            validationError = "Validation stopped"
+            validationError = String(localized: "Validation stopped")
         }
     }
     
@@ -578,7 +636,7 @@ struct ServerEditView: View {
     private func save() {
         let portInt = Int(ssePort) ?? 0
         if portInt > 0 && portInt < 1024 {
-            portWarningMessage = "Port \(portInt) is a system-restricted port on macOS (0-1023). Please use a port above 1024 or use 0 for an automatic port."
+            portWarningMessage = String(localized: "Port \(portInt) is a system-restricted port on macOS (0-1023). Please use a port above 1024 or use 0 for an automatic port.")
             showingPortAlert = true
             return
         }
@@ -588,7 +646,7 @@ struct ServerEditView: View {
             let isCurrentPort = editingConfig?.ssePort == portInt && manager.instances[editingConfig?.id ?? UUID()]?.status == .running
             
             if !isCurrentPort {
-                portWarningMessage = "Port \(portInt) is already in use by another application. Please choose a different port."
+                portWarningMessage = String(localized: "Port \(portInt) is already in use by another application. Please choose a different port.")
                 showingPortAlert = true
                 return
             }
@@ -629,6 +687,61 @@ struct ServerEditView: View {
                 manager.addServer(config)
             }
             dismiss()
+        }
+    }
+    
+    private func pasteFromClipboard() {
+        guard let clipboardString = NSPasteboard.general.string(forType: .string) else {
+            pasteErrorMessage = String(localized: "Clipboard is empty")
+            showingPasteError = true
+            return
+        }
+        
+        guard let jsonData = clipboardString.data(using: .utf8) else {
+            pasteErrorMessage = String(localized: "Invalid text encoding")
+            showingPasteError = true
+            return
+        }
+        
+        do {
+            // Parse MCP JSON format: { "mcpServers" or "servers": { "name": { "command": "...", "args": [...] } } }
+            if let root = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                // Try "mcpServers" first (Cursor/vscode format), then "servers"
+                let serversKey = root.keys.contains("mcpServers") ? "mcpServers" : "servers"
+                guard let servers = root[serversKey] as? [String: [String: Any]],
+                      let firstServer = servers.first else {
+                    let expectedFormat = "{ \"mcpServers\": { \"name\": { \"command\": \"...\", \"args\": [...] } } }"
+                    pasteErrorMessage = String(localized: "JSON format not recognized. Expected: \(expectedFormat)")
+                    showingPasteError = true
+                    return
+                }
+                
+                let serverName = firstServer.key
+                let serverConfig = firstServer.value
+                
+                // Extract command
+                if let cmd = serverConfig["command"] as? String {
+                    command = cmd
+                }
+                
+                // Extract args
+                if let argsArray = serverConfig["args"] as? [String] {
+                    argsString = argsArray.joined(separator: " ")
+                }
+                
+                // Extract env variables
+                if let envDict = serverConfig["env"] as? [String: String] {
+                    envVars = envDict.map { EnvVar(key: $0.key, value: $0.value) }
+                }
+                
+                // Set name (use server key as name if not already set)
+                if name.isEmpty {
+                    name = serverName
+                }
+            }
+        } catch {
+            pasteErrorMessage = String(localized: "Failed to parse JSON: \(error.localizedDescription)")
+            showingPasteError = true
         }
     }
 }

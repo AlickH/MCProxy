@@ -1,0 +1,9 @@
+/* 
+  InfoPlist.strings
+  MCProxy
+
+  Created by Antigravity on 2026-02-10.
+*/
+
+"CFBundleDisplayName" = "MCProxy";
+"CFBundleName" = "MCProxy";

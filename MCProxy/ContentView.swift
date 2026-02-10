@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var editingServer: StdioServerConfig?
     @State private var selectedServerID: UUID?
     @State private var lastServerCount = 0
+    @State private var showingLicense = false
     
     var body: some View {
         NavigationSplitView {
@@ -28,6 +29,9 @@ struct ContentView: View {
         .sheet(item: $editingServer) { server in
             ServerEditView(manager: serverManager, editingConfig: server)
                 .frame(minWidth: 500, minHeight: 600)
+        }
+        .sheet(isPresented: $showingLicense) {
+            LicenseView()
         }
     }
     
@@ -97,6 +101,13 @@ struct ContentView: View {
                     Label("Add Server", systemImage: "plus")
                 }
                 .help("Add New Server")
+            }
+            
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showingLicense = true }) {
+                    Image(systemName: "info.circle")
+                }
+                .help("Show License")
             }
             
             ToolbarItem(placement: .primaryAction) {
@@ -291,7 +302,7 @@ struct ServerStatusBadge: View {
     @ObservedObject var instance: ServerInstance
     
     var body: some View {
-        Text(instance.status.rawValue.uppercased())
+        Text(LocalizedStringKey(instance.status.rawValue.uppercased()))
             .font(.system(size: 9, weight: .bold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -313,7 +324,7 @@ struct ServerStatusBadge: View {
 struct DefaultStatusBadge: View {
     let isEnabled: Bool
     var body: some View {
-        Text(isEnabled ? "ENABLED" : "DISABLED")
+        Text(LocalizedStringKey(isEnabled ? "ENABLED" : "DISABLED"))
             .font(.system(size: 9, weight: .bold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)

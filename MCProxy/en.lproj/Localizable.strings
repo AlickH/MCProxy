@@ -1,0 +1,93 @@
+/* 
+  Localizable.strings
+  MCProxy
+
+  Created by Antigravity on 2026-02-10.
+*/
+
+"MCProxy" = "MCProxy";
+"Add Server" = "Add Server";
+"Quit" = "Quit";
+"Add New Server" = "Add New Server";
+"Quit Application and Stop All Services" = "Quit Application and Stop All Services";
+"No Servers" = "No Servers";
+"Add your first server to get started" = "Add your first server to get started";
+"Select a Server" = "Select a Server";
+"Choose a server from the list to view details" = "Choose a server from the list to view details";
+"ENABLED" = "ENABLED";
+"DISABLED" = "DISABLED";
+"STOPPED" = "STOPPED";
+"STARTING" = "STARTING";
+"RUNNING" = "RUNNING";
+"ERROR" = "ERROR";
+"Dictionary" = "Dictionary";
+"Array" = "Array";
+"String" = "String";
+"Number" = "Number";
+"Boolean" = "Boolean";
+"Null" = "Null";
+"Unknown" = "Unknown";
+
+/* Server Edit View */
+"Basic Info" = "Basic Info";
+"Name" = "Name";
+"Server name" = "Server name";
+"Command" = "Command";
+"e.g. uvx, npx" = "e.g. uvx, npx";
+"Arguments" = "Arguments";
+"space separated" = "space separated";
+"Environment & Directory" = "Environment & Directory";
+"Working Dir" = "Working Dir";
+"Optional" = "Optional";
+"Environment Variables" = "Environment Variables";
+"Key" = "Key";
+"Value" = "Value";
+"No Environment Variables" = "No Environment Variables";
+"%lld items" = "%lld items";
+"Streamable HTTP Settings" = "Streamable HTTP Settings";
+"Host" = "Host";
+"Port" = "Port";
+"0 for random" = "0 for random";
+"⚠️ Ports < 1024 are restricted on macOS" = "⚠️ Ports < 1024 are restricted on macOS";
+"Validation" = "Validation";
+"Validating..." = "Validating...";
+"Validate Connection" = "Validate Connection";
+"Stop" = "Stop";
+"Validation failed: %@" = "Validation failed: %@";
+"Validation stopped" = "Validation stopped";
+"Port %lld is a system-restricted port on macOS (0-1023). Please use a port above 1024 or use 0 for an automatic port." = "Port %lld is a system-restricted port on macOS (0-1023). Please use a port above 1024 or use 0 for an automatic port.";
+"Port %lld is already in use by another application. Please choose a different port." = "Port %lld is already in use by another application. Please choose a different port.";
+"Clipboard is empty" = "Clipboard is empty";
+"Invalid text encoding" = "Invalid text encoding";
+"JSON format not recognized. Expected: { \"mcpServers\": { \"name\": { \"command\": \"...\", \"args\": [...] } } }" = "JSON format not recognized. Expected: { \"mcpServers\": { \"name\": { \"command\": \"...\", \"args\": [...] } } }";
+"Failed to parse JSON: %@" = "Failed to parse JSON: %@";
+"%lld parameter(s)" = "%lld parameter(s)";
+"%lld Tools" = "%lld Tools";
+"Suggestion:" = "Suggestion:";
+"Copy Install Command" = "Copy Install Command";
+"Cancel" = "Cancel";
+"Parse MCP JSON" = "Parse MCP JSON";
+"Save" = "Save";
+
+/* Alerts */
+"Restricted Port" = "Restricted Port";
+"Invalid JSON" = "Invalid JSON";
+"OK" = "OK";
+
+/* Server Logs View */
+"Active Clients:" = "Active Clients:";
+"Logs: %@" = "Logs: %@";
+"Clear Logs" = "Clear Logs";
+"Waiting for response..." = "Waiting for response...";
+"Available Tools (%lld)" = "Available Tools (%lld)";
+"Input Schema" = "Input Schema";
+"Enable" = "Enable";
+"Initialized (JSON-RPC 2.0)" = "Initialized (JSON-RPC 2.0)";
+"NOTIFICATION" = "NOTIFICATION";
+"REQUEST" = "REQUEST";
+"RESPONSE" = "RESPONSE";
+"OUT" = "OUT";
+"ERR" = "ERR";
+"SYS" = "SYS";
+"Local Connection" = "Local Connection";
+"Method:" = "Method:";
