@@ -18,11 +18,19 @@ class ServiceApplication: NSApplication {
 
 // Global Log Helper
 func helperLog(_ message: String) {
-    let logPath = (NSHomeDirectory() as NSString).appendingPathComponent("mcproxy_helper.log")
+    let fileManager = FileManager.default
+    let logDir = (NSHomeDirectory() as NSString).appendingPathComponent("Library/Logs/com.alick.MCProxy")
+    
+    // Create directory if needed
+    if !fileManager.fileExists(atPath: logDir) {
+        try? fileManager.createDirectory(atPath: logDir, withIntermediateDirectories: true)
+    }
+    
+    let logPath = (logDir as NSString).appendingPathComponent("helper.log")
     let timestamp = Date().description
     let entry = "[\(timestamp)] \(message)\n"
     if let data = entry.data(using: .utf8) {
-        if FileManager.default.fileExists(atPath: logPath) {
+        if fileManager.fileExists(atPath: logPath) {
             if let fileHandle = FileHandle(forWritingAtPath: logPath) {
                 fileHandle.seekToEndOfFile()
                 fileHandle.write(data)
@@ -32,7 +40,6 @@ func helperLog(_ message: String) {
             try? data.write(to: URL(fileURLWithPath: logPath))
         }
     }
-    // print(message) // stdout might not be visible in service mode, but harmless
 }
 
 // Start Application
