@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject private var serverManager: ServerManager
@@ -61,6 +62,12 @@ struct ContentView: View {
                                 pasteboard.setString(url, forType: .string)
                             } label: {
                                 Label("Copy HTTP Link", systemImage: "doc.on.doc")
+                            }
+                            
+                            Button {
+                                exportFDMCP(server: server)
+                            } label: {
+                                Label("Export .fdmcp File", systemImage: "square.and.arrow.up")
                             }
                             
                             Divider()
@@ -199,6 +206,55 @@ struct ContentView: View {
         for index in offsets {
             let server = serverManager.servers[index]
             serverManager.deleteServer(id: server.id)
+        }
+    }
+    
+    private func exportFDMCP(server: StdioServerConfig) {
+        let instance = serverManager.instances[server.id]
+        let port = instance?.actualPort ?? server.ssePort
+        let host = server.sseHost
+        let url = "http://\(host):\(port)/"
+        
+        // Construct the Plist dictionary
+        let dict: [String: Any] = [
+            "capabilities": [
+                "array": ["tools"]
+            ],
+            "comment": "",
+            "connectionStatus": (instance?.status == .running) ? "connected" : "stopped",
+            "creation": Date(),
+            "deviceId": UUID().uuidString.uppercased(),
+            "endpoint": url,
+            "header": "",
+            "isEnabled": server.isEnabled,
+            "lastConnected": Date(),
+            "modified": Date(),
+            "name": server.name,
+            "objectId": UUID().uuidString.uppercased(),
+            "removed": false,
+            "resourcesEnabled": ["value": [:]],
+            "templateEnabled": ["value": [:]],
+            "timeout": 60,
+            "toolsEnabled": ["value": [:]],
+            "type": "http"
+        ]
+        
+        do {
+            let data = try PropertyListSerialization.data(fromPropertyList: dict, format: .xml, options: 0)
+            
+            // Show NSSavePanel
+            let savePanel = NSSavePanel()
+            savePanel.allowedContentTypes = [.init("wiki.qaq.fdmcp") ?? .item]
+            savePanel.nameFieldStringValue = "\(server.name).fdmcp"
+            savePanel.title = NSLocalizedString("Export .fdmcp File", comment: "")
+            
+            savePanel.begin { result in
+                if result == .OK, let url = savePanel.url {
+                    try? data.write(to: url)
+                }
+            }
+        } catch {
+            print("[UI] Export failed: \(error)")
         }
     }
 }
