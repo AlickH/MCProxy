@@ -105,7 +105,7 @@ struct ContentView: View {
             
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { showingLicense = true }) {
-                    Image(systemName: "info.circle")
+                    Image(systemName: "hammer.fill")
                 }
                 .help("Show License")
             }

@@ -241,12 +241,12 @@ class JSONPayload {
             let children = dict.keys.sorted().map { k in
                 createNode(key: k, value: dict[k]!)
             }
-            return JSONNode(key: key, type: "Dictionary", value: "\(dict.count) items", children: children)
+            return JSONNode(key: key, type: "Dictionary", value: String(format: NSLocalizedString("%lld items", comment: ""), dict.count), children: children)
         } else if let array = value as? [Any] {
             let children = array.enumerated().map { (index, item) in
                 createNode(key: String(index), value: item)
             }
-            return JSONNode(key: key, type: "Array", value: "\(array.count) items", children: children)
+            return JSONNode(key: key, type: "Array", value: String(format: NSLocalizedString("%lld items", comment: ""), array.count), children: children)
         } else {
             // Leaf
             let type: String

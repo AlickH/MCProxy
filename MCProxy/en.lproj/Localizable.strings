@@ -42,6 +42,7 @@
 "Environment Variables" = "Environment Variables";
 "Key" = "Key";
 "Value" = "Value";
+"Type" = "Type";
 "No Environment Variables" = "No Environment Variables";
 "%lld items" = "%lld items";
 "Streamable HTTP Settings" = "Streamable HTTP Settings";

@@ -429,7 +429,7 @@ struct JSONNodeRow: View {
                 Divider()
                 
                 // Type Column
-                Text(node.type)
+                Text(LocalizedStringKey(node.type))
                     .frame(width: 80, alignment: .leading)
                     .foregroundColor(.secondary)
                     .padding(.leading, 8)
