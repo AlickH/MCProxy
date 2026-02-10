@@ -41,11 +41,13 @@ class MCPSSEBridge: ObservableObject {
     private let queue = DispatchQueue(label: "com.mcp.sse-bridge")
     private var currentHost: String = "127.0.0.1"
     private var currentPort: Int = 3001
+    private var authToken: String? = nil
     private let maxBufferSize = 10 * 1024 * 1024 // 10MB limit
     
-    func start(host: String, port: Int) throws {
+    func start(host: String, port: Int, authToken: String? = nil) throws {
         self.currentHost = host
         self.currentPort = port
+        self.authToken = (authToken?.isEmpty == false) ? authToken : nil
         let parameters = NWParameters.tcp
         guard let nwPort = NWEndpoint.Port(rawValue: UInt16(port)) else {
             throw NSError(domain: "MCPSSEBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid port"])
@@ -434,17 +436,40 @@ class MCPSSEBridge: ObservableObject {
         
         print("[MCPSSEBridge] [\(connectionId)] \(method) \(path) (Body: \(bodyData.count) bytes)")
         
+        if method == "OPTIONS" {
+            handleOptions(connection)
+            return
+        }
+        
+        // Auth Validation
+        if let token = self.authToken {
+            let authHeaderValue = headerStr.components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) }
+                .first { $0.lowercased().hasPrefix("authorization:") }?
+                .components(separatedBy: ":")
+                .last?
+                .trimmingCharacters(in: .whitespaces)
+            
+            let expectedPrefix = "bearer "
+            let isBearer = authHeaderValue?.lowercased().hasPrefix(expectedPrefix) ?? false
+            let actualToken = isBearer ? String(authHeaderValue!.dropFirst(expectedPrefix.count)) : authHeaderValue
+            
+            if actualToken != token {
+                print("[MCPSSEBridge] [\(connectionId)] 401 Unauthorized (Header: \(authHeaderValue ?? "none"))")
+                sendUnauthorizedResponse(connection)
+                return
+            }
+        }
+        
         if method == "GET" && (cleanPath == "/sse" || cleanPath == "/" || cleanPath == "/events") {
             let acceptsSSE = headerStr.lowercased().contains("text/event-stream")
             startHTTPStream(connection, connectionId: connectionId, format: acceptsSSE ? .sse : .raw)
         } else if method == "POST" {
             handlePostMessage(headerStr, bodyData: bodyData, connection: connection, connectionId: connectionId)
-        } else if method == "OPTIONS" {
-            handleOptions(connection)
         } else {
             print("[MCPSSEBridge] [\(connectionId)] 404 for \(method) \(path)")
             let response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-            connection.send(content: response.data(using: .utf8), completion: .contentProcessed({ _ in 
+            connection.send(content: response.data(using: .utf8), completion: .contentProcessed({ _ in
                 connection.cancel()
             }))
         }
@@ -651,6 +676,22 @@ class MCPSSEBridge: ObservableObject {
     private func handleOptions(_ connection: NWConnection) {
         let headers = "HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: *\r\n\r\n"
         connection.send(content: headers.data(using: .utf8), completion: .contentProcessed({ _ in }))
+    }
+    
+    private func sendUnauthorizedResponse(_ connection: NWConnection) {
+        let message = "401 Unauthorized"
+        let response = [
+            "HTTP/1.1 401 Unauthorized",
+            "Content-Type: text/plain",
+            "Content-Length: \(message.count)",
+            "Access-Control-Allow-Origin: *",
+            "Connection: close",
+            "\r\n\(message)"
+        ].joined(separator: "\r\n")
+        
+        connection.send(content: response.data(using: .utf8), completion: .contentProcessed({ _ in
+            connection.cancel()
+        }))
     }
     
     private func removeClient(_ id: UUID) {

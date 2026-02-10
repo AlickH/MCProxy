@@ -71,6 +71,12 @@ struct ContentView: View {
                                 Label("Export .fdmcp File", systemImage: "square.and.arrow.up")
                             }
                             
+                            Button {
+                                copyAsMCPJSON(server: server)
+                            } label: {
+                                Label("Copy as MCP JSON", systemImage: "doc.on.clipboard")
+                            }
+                            
                             Divider()
                             
                             Button {
@@ -227,6 +233,15 @@ struct ContentView: View {
         let host = server.sseHost
         let url = "http://\(host):\(port)/"
         
+        let headers = (server.authToken?.isEmpty == false) ? ["Authorization": "Bearer \(server.authToken!)"] : [:]
+        let headerString: String
+        if let jsonData = try? JSONSerialization.data(withJSONObject: headers, options: [.prettyPrinted, .withoutEscapingSlashes]),
+           let json = String(data: jsonData, encoding: .utf8) {
+            headerString = json
+        } else {
+            headerString = ""
+        }
+        
         // Construct the Plist dictionary
         let dict: [String: Any] = [
             "capabilities": [
@@ -237,7 +252,7 @@ struct ContentView: View {
             "creation": Date(),
             "deviceId": UUID().uuidString.uppercased(),
             "endpoint": url,
-            "header": "",
+            "header": headerString,
             "isEnabled": server.isEnabled,
             "lastConnected": Date(),
             "modified": Date(),
@@ -267,6 +282,34 @@ struct ContentView: View {
             }
         } catch {
             print("[UI] Export failed: \(error)")
+        }
+    }
+    
+    private func copyAsMCPJSON(server: StdioServerConfig) {
+        let instance = serverManager.instances[server.id]
+        let port = instance?.actualPort ?? server.ssePort
+        let host = server.sseHost
+        let url = "http://\(host):\(port)/"
+        
+        var serverDict: [String: Any] = [
+            "url": url
+        ]
+        
+        if let token = server.authToken, !token.isEmpty {
+            serverDict["headers"] = ["Authorization": "Bearer \(token)"]
+        }
+        
+        let mcpConfig: [String: Any] = [
+            "mcpServers": [
+                server.name: serverDict
+            ]
+        ]
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: mcpConfig, options: [.prettyPrinted, .withoutEscapingSlashes]),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(jsonString, forType: .string)
         }
     }
 }

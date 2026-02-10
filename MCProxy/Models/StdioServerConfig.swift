@@ -12,6 +12,7 @@ struct StdioServerConfig: Identifiable, Codable, Equatable {
     var isEnabled: Bool
     var ssePort: Int
     var sseHost: String
+    var authToken: String?
     var tools: [MCPTool] = []
     var disabledTools: Set<String> = []
     
@@ -25,6 +26,7 @@ struct StdioServerConfig: Identifiable, Codable, Equatable {
         isEnabled: Bool = true,
         ssePort: Int = 0,
         sseHost: String = "127.0.0.1",
+        authToken: String? = nil,
         tools: [MCPTool] = [],
         disabledTools: Set<String> = []
     ) {
@@ -37,6 +39,7 @@ struct StdioServerConfig: Identifiable, Codable, Equatable {
         self.isEnabled = isEnabled
         self.ssePort = ssePort
         self.sseHost = sseHost
+        self.authToken = authToken
         self.tools = tools
         self.disabledTools = disabledTools
     }

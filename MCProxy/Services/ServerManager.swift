@@ -569,7 +569,7 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
         }
         
         do {
-            try bridge.start(host: config.sseHost, port: port)
+            try bridge.start(host: config.sseHost, port: port, authToken: config.authToken)
             instance.appendLog("Bridge started on \(config.sseHost):\(port)", type: .system)
         } catch {
             DispatchQueue.main.async {

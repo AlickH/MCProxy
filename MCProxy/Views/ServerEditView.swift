@@ -13,6 +13,7 @@ struct ServerEditView: View {
     @State private var workingDirectory: String = ""
     @State private var ssePort: String = "0"
     @State private var sseHost: String = "127.0.0.1"
+    @State private var authToken: String = ""
     
     // Structured Env Vars
     struct EnvVar: Identifiable, Equatable {
@@ -259,6 +260,21 @@ struct ServerEditView: View {
                     .frame(width: 120, alignment: .leading)
                 TextField("0 for random", text: $ssePort)
                     .textFieldStyle(.roundedBorder)
+            }
+            
+            HStack {
+                Label("Auth Token", systemImage: "key.fill")
+                    .frame(width: 120, alignment: .leading)
+                
+                TextField("Optional Bearer Token", text: $authToken)
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                
+                Button(action: generateRandomToken) {
+                    Image(systemName: "arrow.clockwise")
+                        .help("Generate random token")
+                }
+                .buttonStyle(.bordered)
             }
             
             let portValue = Int(ssePort) ?? 0
@@ -531,6 +547,7 @@ struct ServerEditView: View {
         workingDirectory = config.workingDirectory ?? ""
         ssePort = "\(config.ssePort)"
         sseHost = config.sseHost
+        authToken = config.authToken ?? ""
         envVars = config.env.map { EnvVar(key: $0.key, value: $0.value) }.sorted(by: { $0.key < $1.key })
         mcpTools = config.tools
         if !mcpTools.isEmpty {
@@ -570,7 +587,8 @@ struct ServerEditView: View {
             workingDirectory: finalWorkingDirectory.isEmpty ? nil : finalWorkingDirectory,
             isEnabled: true,
             ssePort: Int(ssePort) ?? 0,
-            sseHost: sseHost
+            sseHost: sseHost,
+            authToken: authToken
         )
         
         Task {
@@ -676,6 +694,7 @@ struct ServerEditView: View {
             isEnabled: editingConfig?.isEnabled ?? true,
             ssePort: Int(ssePort) ?? 0,
             sseHost: sseHost,
+            authToken: authToken,
             tools: mcpTools, // Save discovered tools
             disabledTools: editingConfig?.disabledTools ?? []
         )
@@ -687,6 +706,18 @@ struct ServerEditView: View {
                 manager.addServer(config)
             }
             dismiss()
+        }
+    }
+    
+    private func generateRandomToken() {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        let result = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        if result == errSecSuccess {
+            // Use URL-safe base64 encoding and remove padding for a cleaner token
+            authToken = Data(bytes).base64EncodedString()
+                .replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+                .replacingOccurrences(of: "=", with: "")
         }
     }
     
