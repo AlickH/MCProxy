@@ -78,27 +78,50 @@ autoreleasepool {
 
 class UIAppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow?
+    let serverManager = ServerManager()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         createWindow()
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        return true // Exit app when window is closed (simplest approach)
+        return false // Stay running in Dock/Menu Bar
+    }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            createWindow()
+        }
+        return true
+    }
+    
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // Fallback: If app brought to front (e.g. from menu bar) and no window, create it
+        if window == nil || !window!.isVisible {
+            createWindow()
+        }
     }
     
     private func createWindow() {
-        let serverManager = ServerManager()
+        if let window = window {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        
         let contentView = ContentView().environmentObject(serverManager)
         
-        window = NSWindow(
+        let newWindow = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered, defer: false)
-        window?.center()
-        window?.title = "MCProxy"
-        window?.contentView = NSHostingView(rootView: contentView)
-        window?.makeKeyAndOrderFront(nil)
+        newWindow.center()
+        newWindow.title = "MCProxy"
+        newWindow.contentView = NSHostingView(rootView: contentView)
+        newWindow.isReleasedWhenClosed = false // Allow hiding and showing again
+        newWindow.makeKeyAndOrderFront(nil)
+        
+        self.window = newWindow
         NSApp.activate(ignoringOtherApps: true)
     }
 }
