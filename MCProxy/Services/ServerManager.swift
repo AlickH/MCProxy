@@ -15,6 +15,7 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
     static var onToolsChanged: ((UUID, [MCPTool]) -> Void)?
     
     private let configKey = "MCProxy.servers"
+    private let iCloudKey = "MCProxy.iCloudSync"
     private var cancellables = Set<AnyCancellable>()
     
     // Process Mode
@@ -28,6 +29,20 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
         super.init()
         
         loadServers()
+        
+        // Listen for iCloud changes if not in service mode
+        if !isServiceMode {
+            NotificationCenter.default.addObserver(self, selector: #selector(ubiquitousDataDidChange), name: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: NSUbiquitousKeyValueStore.default)
+            NSUbiquitousKeyValueStore.default.synchronize()
+            
+            // Periodically check if we need to sync to iCloud or from iCloud
+            Timer.publish(every: 30, on: .main, in: .common)
+                .autoconnect()
+                .sink { [weak self] _ in
+                    self?.checkAndSyncICloud()
+                }
+                .store(in: &cancellables)
+        }
         
         if isServiceMode {
             print("[ServerManager] Running in SERVICE mode.")
@@ -106,21 +121,68 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
     
     // MARK: - Config Persistence
     
+    private var isICloudSyncEnabled: Bool {
+        UserDefaults.standard.bool(forKey: iCloudKey)
+    }
+
+    @objc private func ubiquitousDataDidChange(_ notification: Notification) {
+        guard isICloudSyncEnabled else { return }
+        print("[ServerManager] iCloud data changed externally, reloading...")
+        DispatchQueue.main.async {
+            self.loadServers()
+        }
+    }
+
+    private func checkAndSyncICloud() {
+        guard !isServiceMode && isICloudSyncEnabled else { return }
+        NSUbiquitousKeyValueStore.default.synchronize()
+    }
+
     func loadServers() {
-        if let data = UserDefaults.standard.data(forKey: configKey),
+        var data: Data?
+        
+        if !isServiceMode && isICloudSyncEnabled {
+            data = NSUbiquitousKeyValueStore.default.data(forKey: configKey)
+            if data != nil {
+                print("[ServerManager] Loaded servers from iCloud")
+            }
+        }
+        
+        if data == nil {
+            data = UserDefaults.standard.data(forKey: configKey)
+            if data != nil {
+                print("[ServerManager] Loaded servers from Local storage")
+            }
+        }
+
+        if let data = data,
            let decoded = try? JSONDecoder().decode([StdioServerConfig].self, from: data) {
-            servers = decoded
+            // Optimization: Only update if changed to avoid UI refresh churn
+            if decoded != servers {
+                servers = decoded
+                if !isServiceMode {
+                    syncConfigToService()
+                }
+            }
         }
     }
     
     func saveServers() {
-        if let data = try? JSONEncoder().encode(servers) {
-            UserDefaults.standard.set(data, forKey: configKey)
-            UserDefaults.standard.synchronize()
-            
-            if !isServiceMode {
-                syncConfigToService()
-            }
+        guard let data = try? JSONEncoder().encode(servers) else { return }
+        
+        // Always save locally
+        UserDefaults.standard.set(data, forKey: configKey)
+        UserDefaults.standard.synchronize()
+        
+        // Save to iCloud if enabled
+        if !isServiceMode && isICloudSyncEnabled {
+            NSUbiquitousKeyValueStore.default.set(data, forKey: configKey)
+            NSUbiquitousKeyValueStore.default.synchronize()
+            print("[ServerManager] Saved servers to iCloud")
+        }
+        
+        if !isServiceMode {
+            syncConfigToService()
         }
     }
     
@@ -602,6 +664,7 @@ class ServerManager: NSObject, ObservableObject, MCProxyClientProtocol {
                                 instance.config = newConfig
                                 ServerManager.onToolsChanged?(instance.id, mcpTools)
                                 self.updateServer(newConfig) 
+                                self.saveServers() // Ensure saved if updated
                             }
                         }
                     }
@@ -968,5 +1031,3 @@ class ProcessRunner {
         return ProcessComponents(process: process, stdin: stdinPipe, stdout: stdoutPipe, stderr: stderrPipe)
     }
 }
-
-

@@ -45,6 +45,7 @@
 "Type" = "类型";
 "Copy HTTP Link" = "复制 HTTP 链接";
 "Export .fdmcp File" = "导出 .fdmcp 文件";
+"iCloud Sync Profile" = "iCloud 同步配置文件";
 "No Environment Variables" = "无环境变量";
 "%lld items" = "%lld 个项目";
 "Streamable HTTP Settings" = "Streamable HTTP 设置";

@@ -45,6 +45,7 @@
 "Type" = "Type";
 "Copy HTTP Link" = "Copy HTTP Link";
 "Export .fdmcp File" = "Export .fdmcp File";
+"iCloud Sync Profile" = "iCloud Sync Profile";
 "No Environment Variables" = "No Environment Variables";
 "%lld items" = "%lld items";
 "Streamable HTTP Settings" = "Streamable HTTP Settings";

@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject private var serverManager: ServerManager
+    @AppStorage("MCProxy.iCloudSync") private var iCloudSync = false
     @State private var showingAddServer = false
     @State private var editingServer: StdioServerConfig?
     @State private var selectedServerID: UUID?
@@ -92,6 +93,17 @@ struct ContentView: View {
                 }
                 .onDelete(perform: deleteServers)
             }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                Divider()
+                Toggle(isOn: $iCloudSync) {
+                    Label("iCloud Sync Profile", systemImage: "icloud")
+                }
+                .toggleStyle(.switch)
+                .padding()
+            }
+            .background(.ultraThinMaterial)
         }
         .listStyle(.sidebar)
         .scrollIndicators(.hidden)
